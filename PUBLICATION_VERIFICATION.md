@@ -4,7 +4,7 @@ This record describes the checks run against the `NEW API Ultra` publication
 staging tree. It is evidence for this snapshot, not a claim that the
 application has no remaining defects.
 
-Last updated: `2026-08-05T20:13:37Z` (verification commands were run in the
+Last updated: `2026-08-05T21:23:21Z` (verification commands were run in the
 same staging tree; generated build output was removed before publication).
 
 ## Pinned scope
@@ -23,7 +23,9 @@ same staging tree; generated build output was removed before publication).
 - Generated `web/dist`, package-manager directories, `.env`, databases, and
   logs are intentionally absent from the source publication.
 - No Go, TypeScript/TSX, relay, controller, model, migration, or other
-  application/business file was intentionally changed during publication.
+  application/business behavior was intentionally changed during publication;
+  the sole Go source change is the comment-only credential-example
+  sanitization recorded above.
 
 ## Passing checks
 
@@ -48,11 +50,17 @@ re-run after any source or dependency change):
 - YAML parsing for Compose and GitHub workflow files; shell syntax for the
   bootstrap and publication workflow scripts
 - Markdown relative-link audit — 0 missing links
+- Secret-pattern scan found no live credential after replacing the
+  credential-shaped masking-comment example in
+  `relaykit/relayconvert/kitutil/mask.go`; the remaining PEM markers are parser
+  delimiters. GitHub secret-scanning alert #1 was reviewed and resolved as a
+  false positive with an audit comment.
 - Baseline parity audit against `49270e59f475761b457879693e0c3ebd71329fac`:
-  2,329 baseline files, 2,183 publication files, 25 publication-only
-  modifications, 7 publication additions, and 153 intentionally excluded
-  local/upstream-only files; no Go, TypeScript/TSX, relay, controller, model,
-  migration, or other business-source drift detected
+  2,329 baseline files, 2,183 publication files, 26 publication-only
+  modifications (including the one comment-only source-note change above), 7
+  publication additions, and 153 intentionally excluded local/upstream-only
+  files; no runtime Go, TypeScript/TSX, relay, controller, model, migration, or
+  other business-source drift detected
 
 ## Known non-passing or unverified boundaries
 
