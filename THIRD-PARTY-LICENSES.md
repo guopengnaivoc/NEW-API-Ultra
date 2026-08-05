@@ -172,6 +172,7 @@ notices before redistribution; the labels below are triage, not legal advice.
 | Service | Image reference | License / status |
 |---|---|---|
 | PostgreSQL | `postgres:15.18-bookworm@sha256:e8db9bd3e9e1751eb639fb17be53cc6d1b62a322adf75b99e791767a7a16ce69` | PostgreSQL License; verify image contents |
+| PostgreSQL (development) | `postgres:15.18-alpine3.23@sha256:3889f6e66267065437b17a404058a6220d9080c73b701edd225770f8b2d6a52c` | PostgreSQL License; verify image contents |
 | Redis | `redis:7.4.10-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2` | RSALv2 or SSPLv1 for Redis 7.4.x; **VERIFY operational/redistribution terms** |
 | MySQL (optional) | `mysql:8.4.10@sha256:8dbcf531a03aade657e181b9cf2f1d1803ce621a1d55610cb44cb531ab7d7db6` | GPL/FOSS-exception terms; **VERIFY Oracle image terms** |
 | ClickHouse (optional) | `clickhouse/clickhouse-server:26.3.17.56@sha256:422be85ae7344058369cdd366ac0efea9daa8428b55c9cf50258e83a7d12fcb3` | Apache-2.0 project license; verify image contents |
