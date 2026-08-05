@@ -43,6 +43,11 @@ jobs:
             echo "::error::Tag '$tag' is not a supported vX.Y.Z release tag"
             exit 1
           fi
+          committed_version="$(tr -d '\r\n' < VERSION)"
+          if [[ "$tag" != "$committed_version" ]]; then
+            echo "::error::Tag '$tag' must exactly match the committed VERSION '$committed_version'; update VERSION in a source commit before tagging."
+            exit 1
+          fi
           git fetch --no-tags origin "$DEFAULT_BRANCH"
           if ! git merge-base --is-ancestor "$GITHUB_SHA" "origin/$DEFAULT_BRANCH"; then
             echo "::error::The tagged commit is not reachable from origin/$DEFAULT_BRANCH"

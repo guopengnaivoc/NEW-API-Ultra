@@ -122,12 +122,15 @@ workflow. After the first tagged push, the repository owner must explicitly
 choose whether `new-api-ultra` is public; anonymous users cannot pull a private
 package. Verify an unauthenticated pull only after that setting is intentional.
 
-The image workflow runs only for `vX.Y.Z`-style tags and rejects a tag whose
-commit is not reachable from the repository's default branch. The workflow also
-requires an active repository ruleset matching `refs/tags/v*` with deletion and
-non-fast-forward protection; configure and verify that ruleset before creating a
-release tag so a published tag cannot silently move to another digest. It also
-fails closed unless the repository variable `ALLOW_GO_EPAY_REDISTRIBUTION=true`
+The image workflow runs only for `vX.Y.Z`-style tags that exactly match the
+committed `VERSION` file, and rejects a tag whose commit is not reachable from
+the repository's default branch. Update `VERSION` in a source commit before
+creating a new release tag; the workflow will not silently rewrite a mismatched
+source version. It also requires an active repository ruleset matching
+`refs/tags/v*` with deletion and non-fast-forward protection; configure and verify
+that ruleset before creating a release tag so a published tag cannot silently
+move to another digest. It also fails closed unless the repository variable
+`ALLOW_GO_EPAY_REDISTRIBUTION=true`
 has been set after written confirmation from the `go-epay` rights holder; leave it
 unset while that legal review is open. A tag is not a security review or a claim
 that unresolved application bugs have been fixed.
