@@ -141,7 +141,7 @@ that unresolved application bugs have been fixed.
 
 - `POSTGRES_PASSWORD` and `REDIS_PASSWORD`
 - `SESSION_SECRET` for access/refresh-session signing
-- `CRYPTO_SECRET` for the application crypto layer
+- `CRYPTO_SECRET` for cache-key HMAC; keep it separate from the `DATA_ENCRYPTION_KEYS` keyring
 - a 32-byte base64 `DATA_ENCRYPTION_KEYS` keyring and its active key id
 
 The generator takes an atomic `.env.lock` directory lock and refuses to race a
