@@ -67,7 +67,7 @@ jobs:
             -H 'Accept: application/vnd.github+json' \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H 'X-GitHub-Api-Version: 2022-11-28' \
-            "$API_URL/repos/$REPOSITORY/rulesets?includes_parents=false")"
+            "$API_URL/repos/$REPOSITORY/rulesets?includes_parents=false&per_page=100")"
           protected=0
           for ruleset_id in $(jq -r '.[] | select(.target == "tag" and .enforcement == "active") | .id' <<<"$rulesets"); do
             detail="$(curl --fail --silent --show-error --connect-timeout 10 --max-time 30 --retry 3 --retry-delay 2 \
@@ -78,6 +78,7 @@ jobs:
             if jq -e '
               .target == "tag" and
               .enforcement == "active" and
+              (.bypass_actors != null and (.bypass_actors | length == 0)) and
               (((.conditions.ref_name.include // []) | index("refs/tags/v*")) != null) and
               (((.rules // []) | map(.type)) | index("deletion") != null) and
               (((.rules // []) | map(.type)) | index("non_fast_forward") != null)

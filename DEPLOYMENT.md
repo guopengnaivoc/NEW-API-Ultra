@@ -127,9 +127,10 @@ committed `VERSION` file, and rejects a tag whose commit is not reachable from
 the repository's default branch. Update `VERSION` in a source commit before
 creating a new release tag; the workflow will not silently rewrite a mismatched
 source version. It also requires an active repository ruleset matching
-`refs/tags/v*` with deletion and non-fast-forward protection; configure and verify
-that ruleset before creating a release tag so a published tag cannot silently
-move to another digest. It also fails closed unless the repository variable
+`refs/tags/v*` with deletion and non-fast-forward protection and no bypass actors;
+configure and verify that ruleset before creating a release tag so a published
+tag cannot silently move to another digest. Administrator bypasses are outside
+this workflow's trust boundary and must remain disabled for release tags. It also fails closed unless the repository variable
 `ALLOW_GO_EPAY_REDISTRIBUTION=true`
 has been set after written confirmation from the `go-epay` rights holder; leave it
 unset while that legal review is open. A tag is not a security review or a claim
