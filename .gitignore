@@ -7,6 +7,11 @@ upload
 *.db
 build
 *.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.sqlite-*
 logs
 web/dist
 web/node_modules
