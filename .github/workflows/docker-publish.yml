@@ -79,7 +79,9 @@ jobs:
               .target == "tag" and
               .enforcement == "active" and
               (.bypass_actors != null and (.bypass_actors | length == 0)) and
+              .current_user_can_bypass == "never" and
               (((.conditions.ref_name.include // []) | index("refs/tags/v*")) != null) and
+              (((.conditions.ref_name.exclude // []) | length) == 0) and
               (((.rules // []) | map(.type)) | index("deletion") != null) and
               (((.rules // []) | map(.type)) | index("non_fast_forward") != null)
             ' <<<"$detail" >/dev/null; then
