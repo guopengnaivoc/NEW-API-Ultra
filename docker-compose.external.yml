@@ -1,0 +1,53 @@
+# Docker Compose configuration for an external PostgreSQL and Redis.
+#
+# This file intentionally has no database/cache services or depends_on entries.
+# Set SQL_DSN and REDIS_CONN_STRING in .env before using it.
+
+services:
+  new-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${NEW_API_IMAGE:-new-api-ultra:local}
+    env_file:
+      - .env
+    restart: always
+    command: --log-dir /app/logs
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    ports:
+      - "127.0.0.1:${PORT:-3000}:3000"
+    volumes:
+      - new_api_external_data:/data
+      - new_api_external_logs:/app/logs
+    environment:
+      - SQL_DSN=${SQL_DSN:?set SQL_DSN in .env}
+      - REDIS_CONN_STRING=${REDIS_CONN_STRING:?set REDIS_CONN_STRING in .env}
+      - SESSION_SECRET=${SESSION_SECRET:?set SESSION_SECRET in .env}
+      - CRYPTO_SECRET=${CRYPTO_SECRET:?set CRYPTO_SECRET in .env}
+      - DATA_ENCRYPTION_KEYS=${DATA_ENCRYPTION_KEYS:?set DATA_ENCRYPTION_KEYS in .env}
+      - DATA_ENCRYPTION_ACTIVE_KEY_ID=${DATA_ENCRYPTION_ACTIVE_KEY_ID:?set DATA_ENCRYPTION_ACTIVE_KEY_ID in .env}
+      - SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE:-false}
+      - SESSION_COOKIE_TRUSTED_URL=${SESSION_COOKIE_TRUSTED_URL:-}
+      - TZ=${TZ:-Asia/Shanghai}
+      - ERROR_LOG_ENABLED=${ERROR_LOG_ENABLED:-true}
+      - BATCH_UPDATE_ENABLED=${BATCH_UPDATE_ENABLED:-true}
+      - NODE_NAME=${NODE_NAME:-new-api-external-node}
+    networks:
+      - new-api-external-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:3000/api/status | grep -q '\"success\"[[:space:]]*:[[:space:]]*true' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  new_api_external_data:
+  new_api_external_logs:
+
+networks:
+  new-api-external-network:
+    driver: bridge

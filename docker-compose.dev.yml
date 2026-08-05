@@ -1,0 +1,97 @@
+# Frontend Development - Backend built from local source
+#
+# Usage:
+#   1. ./scripts/bootstrap-env.sh
+#   2. docker compose -f docker-compose.dev.yml up -d --build
+#   3. (cd web && bun run dev -- --host 127.0.0.1 --port 5173)
+#   4. Open http://127.0.0.1:5173 (Rsbuild dev server, API auto-proxied to :3000)
+#      `make dev-web` uses 0.0.0.0 for LAN testing; do not use it on an
+#      untrusted network without a firewall.
+#
+# Rebuild backend after Go code changes:
+#   docker compose -f docker-compose.dev.yml up -d --build new-api
+#
+# Stop:
+#   docker compose -f docker-compose.dev.yml down
+#
+# Reset data:
+#   docker compose -f docker-compose.dev.yml down -v
+
+services:
+  new-api:
+    # This development service builds the inherited New API source locally;
+    # it does not pull the upstream `calciumion/new-api:latest` image.
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: new-api-dev:local
+    # Compose's project .env is only an interpolation source unless it is
+    # listed here. Keep the full local configuration visible to the process;
+    # the explicit development values below intentionally override it.
+    env_file:
+      - .env
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - dev_data:/data
+    environment:
+      - SQL_DSN=${SQL_DSN:-postgresql://root:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/new-api}
+      - REDIS_CONN_STRING=${REDIS_CONN_STRING:-redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}@redis:6379}
+      - SESSION_SECRET=${SESSION_SECRET:?set SESSION_SECRET in .env}
+      - CRYPTO_SECRET=${CRYPTO_SECRET:?set CRYPTO_SECRET in .env}
+      - DATA_ENCRYPTION_KEYS=${DATA_ENCRYPTION_KEYS:?set DATA_ENCRYPTION_KEYS in .env}
+      - DATA_ENCRYPTION_ACTIVE_KEY_ID=${DATA_ENCRYPTION_ACTIVE_KEY_ID:?set DATA_ENCRYPTION_ACTIVE_KEY_ID in .env}
+      - TZ=Asia/Shanghai
+      - BATCH_UPDATE_ENABLED=true
+      # Local HTTP dev mode: keep Secure=false and leave TRUSTED_URL unset. This disables the refresh/logout OriginGuard so the :5173 -> :3000 dev proxy works.
+      - SESSION_COOKIE_SECURE=false
+      # For HTTPS only: set Secure=true and list every exact trusted HTTPS browser Origin. This does not configure relay CORS.
+      # - SESSION_COOKIE_SECURE=true
+      # - SESSION_COOKIE_TRUSTED_URL=https://example.com,https://admin.example.com
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - dev-network
+
+  redis:
+    image: redis:7.4.10-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}"]
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$${REDIS_PASSWORD}\" redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - dev-network
+
+  postgres:
+    image: postgres:15.18-alpine3.23@sha256:3889f6e66267065437b17a404058a6220d9080c73b701edd225770f8b2d6a52c
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: new-api
+    volumes:
+      - dev_pg_data:/var/lib/postgresql/data
+    networks:
+      - dev-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root -d new-api"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  dev_data:
+  dev_pg_data:
+
+networks:
+  dev-network:
+    driver: bridge

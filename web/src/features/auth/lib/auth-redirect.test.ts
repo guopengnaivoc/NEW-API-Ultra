@@ -1,0 +1,181 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
+import assert from 'node:assert/strict'
+import { describe, test } from 'node:test'
+
+import type { AuthUser } from '@/stores/auth-store'
+
+import {
+  buildSessionRecoverySignInHref,
+  getSavedLanguage,
+  sanitizeAuthRedirect,
+} from './auth-redirect'
+
+const origin = 'https://dashboard.example.com'
+
+describe('authentication redirect validation', () => {
+  test('preserves safe internal paths, search parameters, and fragments', () => {
+    assert.equal(
+      sanitizeAuthRedirect('/console?tab=usage#recent', origin),
+      '/console?tab=usage#recent'
+    )
+    assert.equal(
+      sanitizeAuthRedirect(
+        'https://dashboard.example.com/dashboard?tab=quota#daily',
+        origin
+      ),
+      '/dashboard?tab=quota#daily'
+    )
+  })
+
+  test('rejects external and ambiguously parsed redirect targets', () => {
+    const unsafeTargets: unknown[] = [
+      undefined,
+      '',
+      'dashboard',
+      '//attacker.example/path',
+      'https://attacker.example/path',
+      'javascript:alert(1)',
+      '/\\attacker.example/path',
+      'https:\\attacker.example/path',
+    ]
+
+    for (const target of unsafeTargets) {
+      assert.equal(sanitizeAuthRedirect(target, origin), null)
+    }
+  })
+
+  test('rejects invalid or non-HTTP application origins', () => {
+    assert.equal(sanitizeAuthRedirect('/dashboard', 'not-an-origin'), null)
+    assert.equal(sanitizeAuthRedirect('/dashboard', 'file:///tmp/app'), null)
+  })
+})
+
+describe('session recovery redirect', () => {
+  test('preserves the current path, search parameters, and fragment', () => {
+    assert.equal(
+      buildSessionRecoverySignInHref(
+        'https://dashboard.example.com/Usage-Logs?Channel=7#Row-9',
+        origin
+      ),
+      '/sign-in?redirect=%2FUsage-Logs%3FChannel%3D7%23Row-9'
+    )
+  })
+
+  test('does not replace an existing sign-in recovery target', () => {
+    assert.equal(
+      buildSessionRecoverySignInHref(
+        '/sign-in/?redirect=%2Fkeys%3Fpage%3D2',
+        origin
+      ),
+      null
+    )
+  })
+
+  test('does not replace a case-variant sign-in recovery target', () => {
+    assert.equal(
+      buildSessionRecoverySignInHref(
+        '/SIGN-IN?redirect=%2Fkeys%3Fpage%3D2',
+        origin
+      ),
+      null
+    )
+  })
+
+  test('does not retain a case-variant OAuth callback secret', () => {
+    assert.equal(
+      buildSessionRecoverySignInHref(
+        '/OAUTH/GitHub?code=secret&state=nonce',
+        origin
+      ),
+      '/sign-in'
+    )
+  })
+
+  test('does not retain a case-variant password-reset secret', () => {
+    assert.equal(
+      buildSessionRecoverySignInHref('/USER/RESET?token=secret', origin),
+      '/sign-in'
+    )
+  })
+
+  test('falls back to sign-in without retaining unsafe destinations', () => {
+    assert.equal(
+      buildSessionRecoverySignInHref(
+        'https://attacker.example/private',
+        origin
+      ),
+      '/sign-in'
+    )
+    assert.equal(
+      buildSessionRecoverySignInHref('/dashboard', 'not-an-origin'),
+      '/sign-in'
+    )
+  })
+
+  test('does not retain transient authentication routes or their secrets', () => {
+    const authFlowTargets = [
+      '/sign-up?invite=secret',
+      '/forgot-password?email=user%40example.com',
+      '/otp?flow=secret',
+      '/reset?token=secret',
+      '/user/reset?token=secret',
+      '/oauth?code=secret&state=nonce',
+      '/oauth/github?code=secret&state=nonce',
+    ]
+
+    for (const target of authFlowTargets) {
+      assert.equal(buildSessionRecoverySignInHref(target, origin), '/sign-in')
+    }
+  })
+})
+
+describe('saved authentication language', () => {
+  const user: AuthUser = { id: 1, username: 'user', role: 1 }
+
+  test('prefers the explicit user language', () => {
+    assert.equal(
+      getSavedLanguage({
+        ...user,
+        language: 'ja',
+        setting: { language: 'fr' },
+      }),
+      'ja'
+    )
+  })
+
+  test('reads object and JSON string settings', () => {
+    assert.equal(
+      getSavedLanguage({ ...user, setting: { language: 'fr' } }),
+      'fr'
+    )
+    assert.equal(
+      getSavedLanguage({ ...user, setting: '{"language":"ru"}' }),
+      'ru'
+    )
+  })
+
+  test('ignores malformed and non-string setting languages', () => {
+    assert.equal(getSavedLanguage({ ...user, setting: '{' }), undefined)
+    assert.equal(
+      getSavedLanguage({ ...user, setting: { language: 123 } }),
+      undefined
+    )
+  })
+})

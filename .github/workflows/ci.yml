@@ -1,0 +1,254 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend vet, build, and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GOWORK: 'off'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Validate bootstrap-env.sh without committing secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"' EXIT
+          mkdir -p "$tmp/scripts"
+          cp scripts/bootstrap-env.sh "$tmp/scripts/bootstrap-env.sh"
+          chmod 700 "$tmp/scripts/bootstrap-env.sh"
+          (
+            cd "$tmp"
+            ./scripts/bootstrap-env.sh
+            test "$(python3 -c 'import os; print(oct(os.stat(".env").st_mode & 0o777))')" = 0o600
+            for name in POSTGRES_PASSWORD REDIS_PASSWORD SESSION_SECRET CRYPTO_SECRET; do
+              grep -Eq "^${name}=[0-9a-f]{64}$" .env
+            done
+            grep -Eq '^DATA_ENCRYPTION_KEYS=primary=[A-Za-z0-9+/]{43}=$' .env
+            grep -Eq '^DATA_ENCRYPTION_ACTIVE_KEY_ID=primary$' .env
+            if ./scripts/bootstrap-env.sh; then
+              echo 'bootstrap-env.sh overwrote an existing .env' >&2
+              exit 1
+            fi
+          )
+          fault="$tmp/fault"
+          mkdir -p "$fault/scripts" "$fault/fake-bin"
+          cp scripts/bootstrap-env.sh "$fault/scripts/bootstrap-env.sh"
+          chmod 700 "$fault/scripts/bootstrap-env.sh"
+          cat > "$fault/fake-bin/openssl" <<'EOF'
+          #!/usr/bin/env bash
+          if [[ "$*" == 'rand -base64 32' ]]; then
+            printf '%s\n' 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
+            exit 0
+          fi
+          exit 1
+          EOF
+          chmod 700 "$fault/fake-bin/openssl"
+          if PATH="$fault/fake-bin:$PATH" "$fault/scripts/bootstrap-env.sh"; then
+            echo 'bootstrap-env.sh accepted a failed secret generator' >&2
+            exit 1
+          fi
+          test ! -e "$fault/.env"
+          test -z "$(find "$fault" -maxdepth 1 -name '.env.tmp.*' -print -quit)"
+
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          # Match the digest-pinned golang:1.26.5-alpine3.24 builder in Dockerfile.
+          go-version: '1.26.5'
+          cache-dependency-path: |
+            go.sum
+            relaykit/go.sum
+
+      - name: Create frontend embed placeholder
+        run: |
+          mkdir -p web/dist
+          printf '%s\n' '<!doctype html><html><body>CI placeholder</body></html>' > web/dist/index.html
+
+      - name: Download root module dependencies
+        run: go mod download
+
+      - name: Download relaykit module dependencies
+        working-directory: relaykit
+        run: go mod download
+
+      - name: Vet root module (baseline diagnostic allowlist)
+        shell: bash
+        run: |
+          set -euo pipefail
+          log="$(mktemp)"
+          trap 'rm -f "$log"' EXIT
+          set +e
+          go vet ./... >"$log" 2>&1
+          status=$?
+          set -e
+          if (( status == 0 )); then
+            echo 'go vet passed with no diagnostics.'
+            exit 0
+          fi
+
+          cat "$log"
+          expected='relay/channel/dify/adaptor.go:111:2: unreachable code'
+          actual="$(sed '/^[[:space:]]*$/d' "$log")"
+          if [[ "$actual" == "$expected" ]]; then
+            if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+              {
+                echo '### Root go vet baseline exception'
+                echo
+                echo "The pinned application baseline still reports the known diagnostic: \`$expected\`."
+                echo 'This publication pass does not change that business code. Any additional or different diagnostic fails this job.'
+              } >> "$GITHUB_STEP_SUMMARY"
+            fi
+            echo "::warning::go vet reported the pinned baseline diagnostic '$expected'; no other diagnostics were allowed."
+            exit 0
+          fi
+          echo '::error::go vet produced an unexpected diagnostic; the publication CI allowlist is fail-closed.'
+          exit "$status"
+
+      - name: Vet relaykit independently
+        working-directory: relaykit
+        run: go vet ./...
+
+      - name: Build root module
+        run: go build ./...
+
+      - name: Build relaykit independently
+        working-directory: relaykit
+        run: go build ./...
+
+      - name: Test root module
+        run: go test ./...
+
+      - name: Test relaykit independently
+        working-directory: relaykit
+        run: go test ./...
+
+  frontend:
+    name: Frontend typecheck, build, and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          # Match the digest-pinned oven/bun:1.3.14 builder in Dockerfile.
+          bun-version: '1.3.14'
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Format check
+        run: bun run format:check
+
+      - name: Build production frontend
+        env:
+          CI: ''
+        run: VITE_REACT_APP_VERSION="$(cat ../VERSION)" DISABLE_ESLINT_PLUGIN='true' bun run build
+
+      - name: Test
+        run: bun test
+
+  docker:
+    name: Docker build smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Validate Compose files and environment forwarding
+        shell: bash
+        run: |
+          set -euo pipefail
+          trap 'rm -f .env' EXIT
+          umask 077
+          cat > .env <<'EOF'
+          POSTGRES_PASSWORD=postgres-ci-password
+          REDIS_PASSWORD=redis-ci-password
+          SESSION_SECRET=session-ci-secret
+          CRYPTO_SECRET=crypto-ci-secret
+          DATA_ENCRYPTION_KEYS=primary=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          DATA_ENCRYPTION_ACTIVE_KEY_ID=primary
+          DATA_ENCRYPTION_ENABLE=false
+          TRUSTED_PROXIES=none
+          FRONTEND_BASE_URL=https://example.invalid
+          ERROR_LOG_ENABLED=false
+          NODE_NAME=ci-node
+          SQL_DSN=postgres://external:password@db.example.invalid:5432/new_api
+          REDIS_CONN_STRING=redis://:password@redis.example.invalid:6379/0
+          EOF
+          docker compose --env-file .env -f docker-compose.yml config --quiet
+          docker compose --env-file .env -f docker-compose.dev.yml config --quiet
+          docker compose --env-file .env -f docker-compose.external.yml config --quiet
+          rendered="$(docker compose --env-file .env -f docker-compose.yml config --format json)"
+          printf '%s' "$rendered" | jq -e '
+            .services["new-api"].environment.TRUSTED_PROXIES == "none" and
+            .services["new-api"].environment.FRONTEND_BASE_URL == "https://example.invalid" and
+            .services["new-api"].environment.DATA_ENCRYPTION_ENABLE == "false" and
+            .services["new-api"].environment.ERROR_LOG_ENABLED == "false" and
+            .services["new-api"].environment.NODE_NAME == "ci-node"
+          ' >/dev/null
+          external="$(docker compose --env-file .env -f docker-compose.external.yml config --format json)"
+          printf '%s' "$external" | jq -e '
+            (.services | keys) == ["new-api"] and
+            (.services["new-api"] | has("depends_on") | not) and
+            .services["new-api"].environment.SQL_DSN == "postgres://external:password@db.example.invalid:5432/new_api" and
+            .services["new-api"].environment.REDIS_CONN_STRING == "redis://:password@redis.example.invalid:6379/0"
+          ' >/dev/null
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Build production image (no push)
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: new-api-ultra:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Validate runtime entrypoint and non-root metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(docker image inspect --format '{{.Config.User}}' new-api-ultra:ci)" = newapi
+          test "$(docker run --rm new-api-ultra:ci --version)" = "$(cat VERSION)"

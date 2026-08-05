@@ -1,0 +1,179 @@
+name: Publish Docker image
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: docker-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/new-api-ultra
+
+jobs:
+  publish:
+    name: Build and publish multi-architecture image
+    runs-on: ubuntu-latest
+    # The CI gate may wait up to 30 minutes for the main-branch checks before
+    # the multi-architecture QEMU build starts. Leave enough headroom for both.
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      checks: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Resolve and validate image tag
+        id: version
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          tag="$REF_NAME"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Tag '$tag' is not a supported vX.Y.Z release tag"
+            exit 1
+          fi
+          git fetch --no-tags origin "$DEFAULT_BRANCH"
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" "origin/$DEFAULT_BRANCH"; then
+            echo "::error::The tagged commit is not reachable from origin/$DEFAULT_BRANCH"
+            exit 1
+          fi
+          printf '%s\n' "$tag" > VERSION
+          printf 'tag=%s\n' "$tag" >> "$GITHUB_OUTPUT"
+          echo "Publishing $tag"
+
+      - name: Require immutable v* tag ruleset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          API_URL: ${{ github.api_url }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          rulesets="$(curl --fail --silent --show-error --connect-timeout 10 --max-time 30 --retry 3 --retry-delay 2 \
+            -H 'Accept: application/vnd.github+json' \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "$API_URL/repos/$REPOSITORY/rulesets?targets=tag&includes_parents=false")"
+          if ! jq -e '
+            any(.[]?;
+              .target == "tag" and
+              .enforcement == "active" and
+              (((.conditions.ref_name.include // []) | index("refs/tags/v*")) != null) and
+              (((.rules // []) | map(.type)) | index("deletion") != null) and
+              (((.rules // []) | map(.type)) | index("non_fast_forward") != null)
+            )
+          ' <<<"$rulesets" >/dev/null; then
+            echo '::error::An active repository tag ruleset for refs/tags/v* with deletion and non-fast-forward protection is required before publishing GHCR images.'
+            exit 1
+          fi
+
+      - name: Require go-epay redistribution authorization
+        env:
+          ALLOW_GO_EPAY_REDISTRIBUTION: ${{ vars.ALLOW_GO_EPAY_REDISTRIBUTION }}
+        run: |
+          set -euo pipefail
+          if [[ "$ALLOW_GO_EPAY_REDISTRIBUTION" != "true" ]]; then
+            echo "::error::GHCR publication is disabled until the repository variable ALLOW_GO_EPAY_REDISTRIBUTION=true is set after written confirmation from the go-epay rights holder."
+            exit 1
+          fi
+
+      - name: Require successful CI for tagged commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          API_URL: ${{ github.api_url }}
+          REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          # A tag can be created while the main-branch CI run is still queued.
+          # Wait for the three required CI jobs, and fail closed on any failure.
+          for attempt in $(seq 1 60); do
+            checks="$(curl --fail --silent --show-error --connect-timeout 10 --max-time 30 --retry 3 --retry-delay 2 \
+              -H 'Accept: application/vnd.github+json' \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "$API_URL/repos/$REPOSITORY/commits/$COMMIT_SHA/check-runs?per_page=100")"
+            summary="$(printf '%s' "$checks" | jq -r --arg sha "$COMMIT_SHA" '
+              [.check_runs[]
+                | select(.head_sha == $sha)
+                | select(.name == "Backend vet, build, and test"
+                      or .name == "Frontend typecheck, build, and test"
+                      or .name == "Docker build smoke test")]
+              | sort_by(.name, .started_at)
+              | group_by(.name)
+              | map(last)
+              | {total: length,
+                 pending: (map(select(.status != "completed")) | length),
+                 failed: (map(select(.status == "completed" and .conclusion != "success")) | length)}
+              | [.total, .pending, .failed] | @tsv')"
+            read -r total pending failed <<< "$summary"
+            if (( failed > 0 )); then
+              echo "::error::At least one required CI job failed for $COMMIT_SHA"
+              exit 1
+            fi
+            if (( total == 3 && pending == 0 )); then
+              echo "Required CI jobs passed for $COMMIT_SHA"
+              exit 0
+            fi
+            echo "Waiting for required CI jobs (attempt $attempt/60): total=$total pending=$pending"
+            sleep 30
+          done
+          echo "::error::Required CI jobs did not complete successfully for $COMMIT_SHA"
+          exit 1
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@c99871dec2022cc055c062a10cc1a1310835ceb4 # v4.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ steps.version.outputs.tag }}
+            type=sha,prefix=sha-,format=short
+
+      - name: Build and push image
+        id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: mode=max
+          sbom: true
+
+      - name: Publish summary
+        run: |
+          {
+            echo '### Published image'
+            echo '```'
+            echo "${IMAGE_NAME}:${{ steps.version.outputs.tag }}"
+            echo "source: $GITHUB_SHA"
+            echo "digest: ${{ steps.build.outputs.digest }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
