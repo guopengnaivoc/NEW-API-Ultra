@@ -22,6 +22,7 @@ jobs:
     permissions:
       contents: read
       checks: read
+      actions: read
       packages: write
 
     steps:
@@ -110,19 +111,44 @@ jobs:
           API_URL: ${{ github.api_url }}
           REPOSITORY: ${{ github.repository }}
           COMMIT_SHA: ${{ github.sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
           # A tag can be created while the main-branch CI run is still queued.
-          # Wait for the three required CI jobs, and fail closed on any failure.
+          # Resolve the exact push/main run of this repository's ci.yml first;
+          # unrelated pull-request checks or another workflow must not satisfy
+          # the release gate for the same commit.
           for attempt in $(seq 1 60); do
-            checks="$(curl --fail --silent --show-error --connect-timeout 10 --max-time 30 --retry 3 --retry-delay 2 \
+            runs="$(curl --fail --silent --show-error --connect-timeout 10 --max-time 30 --retry 3 --retry-delay 2 \
               -H 'Accept: application/vnd.github+json' \
               -H "Authorization: Bearer $GH_TOKEN" \
               -H 'X-GitHub-Api-Version: 2022-11-28' \
-              "$API_URL/repos/$REPOSITORY/commits/$COMMIT_SHA/check-runs?per_page=100")"
-            summary="$(printf '%s' "$checks" | jq -r --arg sha "$COMMIT_SHA" '
-              [.check_runs[]
-                | select(.head_sha == $sha)
+              "$API_URL/repos/$REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$COMMIT_SHA&event=push&branch=$DEFAULT_BRANCH&per_page=100")"
+            run_meta="$(printf '%s' "$runs" | jq -r --arg sha "$COMMIT_SHA" --arg branch "$DEFAULT_BRANCH" '
+              [.workflow_runs[]
+                | select(.head_sha == $sha
+                      and .event == "push"
+                      and .head_branch == $branch
+                      and .path == ".github/workflows/ci.yml")]
+              | sort_by([.run_number, .run_attempt, .created_at])
+              | if length == 0 then empty else last | [.id, .status, (.conclusion // "")] | @tsv end')"
+            if [[ -z "$run_meta" ]]; then
+              echo "Waiting for the exact push/main CI run (attempt $attempt/60)"
+              sleep 30
+              continue
+            fi
+            read -r run_id run_status run_conclusion <<< "$run_meta"
+            if [[ "$run_status" == "completed" && "$run_conclusion" != "success" ]]; then
+              echo "::error::The exact push/main CI workflow run $run_id concluded $run_conclusion for $COMMIT_SHA"
+              exit 1
+            fi
+            jobs="$(curl --fail --silent --show-error --connect-timeout 10 --max-time 30 --retry 3 --retry-delay 2 \
+              -H 'Accept: application/vnd.github+json' \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "$API_URL/repos/$REPOSITORY/actions/runs/$run_id/jobs?per_page=100")"
+            summary="$(printf '%s' "$jobs" | jq -r '
+              [.jobs[]
                 | select(.name == "Backend vet, build, and test"
                       or .name == "Frontend typecheck, build, and test"
                       or .name == "Docker build smoke test")]
@@ -135,17 +161,17 @@ jobs:
               | [.total, .pending, .failed] | @tsv')"
             read -r total pending failed <<< "$summary"
             if (( failed > 0 )); then
-              echo "::error::At least one required CI job failed for $COMMIT_SHA"
+              echo "::error::At least one required CI job failed in workflow run $run_id for $COMMIT_SHA"
               exit 1
             fi
-            if (( total == 3 && pending == 0 )); then
-              echo "Required CI jobs passed for $COMMIT_SHA"
+            if [[ "$run_status" == "completed" && "$run_conclusion" == "success" && "$total" == 3 && "$pending" == 0 ]]; then
+              echo "Required push/main CI jobs passed in workflow run $run_id for $COMMIT_SHA"
               exit 0
             fi
-            echo "Waiting for required CI jobs (attempt $attempt/60): total=$total pending=$pending"
+            echo "Waiting for required push/main CI jobs (attempt $attempt/60): run=$run_id status=$run_status total=$total pending=$pending"
             sleep 30
           done
-          echo "::error::Required CI jobs did not complete successfully for $COMMIT_SHA"
+          echo "::error::Required push/main CI workflow did not complete successfully for $COMMIT_SHA"
           exit 1
 
       - name: Set up QEMU

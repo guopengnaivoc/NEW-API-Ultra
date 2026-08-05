@@ -130,7 +130,11 @@ source version. It also requires an active repository ruleset matching
 `refs/tags/v*` with deletion and non-fast-forward protection and no bypass actors;
 configure and verify that ruleset before creating a release tag so a published
 tag cannot silently move to another digest. Administrator bypasses are outside
-this workflow's trust boundary and must remain disabled for release tags. It also fails closed unless the repository variable
+this workflow's trust boundary and must remain disabled for release tags. Before the
+image build, the workflow resolves the exact `push` run of this repository's
+`.github/workflows/ci.yml` on the default branch for the tagged commit, then
+requires the three named CI jobs from that run; unrelated pull-request checks or
+another workflow cannot satisfy the release gate. It also fails closed unless the repository variable
 `ALLOW_GO_EPAY_REDISTRIBUTION=true`
 has been set after written confirmation from the `go-epay` rights holder; leave it
 unset while that legal review is open. A tag is not a security review or a claim
@@ -144,6 +148,11 @@ that unresolved application bugs have been fixed.
 - `SESSION_SECRET` for access/refresh-session signing
 - `CRYPTO_SECRET` for cache-key HMAC; keep it separate from the `DATA_ENCRYPTION_KEYS` keyring
 - a 32-byte base64 `DATA_ENCRYPTION_KEYS` keyring and its active key id
+
+The application can fall back to `SESSION_SECRET` for `CRYPTO_SECRET` when an
+operator omits it, but this publication's bootstrap file always writes an
+independent value. Keep the explicit value in place for shared-node deployments
+and do not use it as a data-encryption key.
 
 The generator takes an atomic `.env.lock` directory lock and refuses to race a
 second invocation. If a process is forcibly terminated while generating

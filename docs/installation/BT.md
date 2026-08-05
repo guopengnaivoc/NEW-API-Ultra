@@ -16,6 +16,7 @@
 | 资源 | 至少 1 核、2 GB 内存（实际需求取决于数据库和上游流量） |
 | Docker | Docker Engine 与 Compose v2 |
 | 密钥工具 | `openssl`，用于生成稳定的部署密钥 |
+| 检查工具 | `curl`，用于等待应用健康接口就绪 |
 
 ## 方法一：从发布仓库构建（推荐）
 
@@ -27,6 +28,11 @@
    if [ ! -e .env ]; then ./scripts/bootstrap-env.sh; fi
    docker compose config --quiet
    docker compose up -d --build
+   for attempt in $(seq 1 30); do
+     if curl -fsS http://127.0.0.1:3000/api/status; then break; fi
+     if [ "$attempt" -eq 30 ]; then echo "NEW API did not become ready" >&2; exit 1; fi
+     sleep 2
+   done
    docker compose ps
    ```
 
@@ -48,6 +54,11 @@ cd /www/wwwroot/new-api-ultra
 if [ ! -e .env ]; then ./scripts/bootstrap-env.sh; fi
 export NEW_API_IMAGE=ghcr.io/guopengnaivoc/new-api-ultra:<tag>
 docker compose up -d --no-build
+for attempt in $(seq 1 30); do
+  if curl -fsS http://127.0.0.1:3000/api/status; then break; fi
+  if [ "$attempt" -eq 30 ]; then echo "NEW API did not become ready" >&2; exit 1; fi
+  sleep 2
+done
 ```
 
 不要使用 `latest` 或上游 `calciumion/new-api` 镜像来代替本仓库快照。部署前请核对

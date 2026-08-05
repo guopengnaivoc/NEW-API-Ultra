@@ -4,7 +4,7 @@ This record describes the checks run against the `NEW API Ultra` publication
 staging tree. It is evidence for this snapshot, not a claim that the
 application has no remaining defects.
 
-Last updated: `2026-08-05T19:32:38Z` (verification commands were run in the
+Last updated: `2026-08-05T20:09:02Z` (verification commands were run in the
 same staging tree; generated build output was removed before publication).
 
 ## Pinned scope
@@ -16,6 +16,9 @@ same staging tree; generated build output was removed before publication).
   public `QuantumNous/new-api` commit)
 - Snapshot label: `v0.1.0-main.49270e59`
 - Intended repository: <https://github.com/guopengnaivoc/NEW-API-Ultra>
+- Remote CI evidence commit: `ee99409cb6c99773eec3ec5bbd036062bcb5dbde`;
+  the publication-only docs/CI patch now being recorded does not change
+  application behavior and requires its own CI run before tagging.
 - Generated `web/dist`, package-manager directories, `.env`, databases, and
   logs are intentionally absent from the source publication.
 - No Go, TypeScript/TSX, relay, controller, model, migration, or other
@@ -31,7 +34,7 @@ re-run after any source or dependency change):
   `DISABLE_ESLINT_PLUGIN=true`)
 - Frontend `bun run typecheck`
 - Frontend `bun run format:check`
-- Frontend `bun test` — 418 passed, 0 failed across 75 files
+- Local frontend `bun test` — 418 passed, 0 failed across 75 files
 - Root `GOWORK=off go build ./...`
 - Root `GOWORK=off go test ./...`
 - Independent `relaykit` `go vet`, `go build`, and `go test`
@@ -51,6 +54,20 @@ re-run after any source or dependency change):
   migration, or other business-source drift detected
 
 ## Known non-passing or unverified boundaries
+
+- The last completed GitHub Actions CI run
+  [31040796003](https://github.com/guopengnaivoc/NEW-API-Ultra/actions/runs/31040796003)
+  for evidence commit `ee99409cb6c99773eec3ec5bbd036062bcb5dbde` completed
+  with `failure`: the
+  backend job and Docker build smoke test passed, but the frontend test job
+  reproduced one existing failure (`417 pass`, `1 fail` across 418 tests). The
+  failing test is `web/src/features/dashboard/components/models/__tests__/chart-theme-recovery.test.tsx:131`,
+  where `applicationAttempts` was `0` instead of `1` in “a dashboard chart
+  recovers in place after a transient theme failure”. Local execution passed
+  418/0, so this publication does not treat CI as green; no business source or
+  test was changed, excluded, or serialized to hide the failure. The release
+  workflow consequently remains fail-closed until a fresh tagged-commit CI run
+  passes all required jobs.
 
 - Root `GOWORK=off go vet ./...` reports the pre-existing unreachable return at
   `relay/channel/dify/adaptor.go:111` in the pinned baseline. It was not
@@ -94,4 +111,6 @@ redistributing a binary or operating a hosted service. Preserve `LICENSE`,
 `NOTICE`, the upstream attribution, and all third-party notices.
 
 The GHCR workflow therefore fails closed until the repository owner sets
-`ALLOW_GO_EPAY_REDISTRIBUTION=true` after recording that confirmation.
+`ALLOW_GO_EPAY_REDISTRIBUTION=true` after recording that confirmation. The gate
+does not itself grant rights to source, module, CI-log, or BuildKit-cache artifacts;
+those retention and access surfaces require the same rights-holder review.
