@@ -58,7 +58,7 @@ docker compose up -d --no-build
 | 变量 | 说明 | 要求 |
 | --- | --- | --- |
 | `SESSION_SECRET` | Access/Refresh Session 签名密钥 | 必填，所有共享实例必须一致 |
-| `CRYPTO_SECRET` | 应用加密层根密钥 | 必填，所有共享实例必须一致 |
+| `CRYPTO_SECRET` | 缓存键 HMAC 密钥；不得复用为 `DATA_ENCRYPTION_KEYS` | 必填，所有共享实例必须一致 |
 | `DATA_ENCRYPTION_KEYS` | 渠道敏感凭据密钥环 | 必填 |
 | `DATA_ENCRYPTION_ACTIVE_KEY_ID` | 当前密钥环版本 | 必填 |
 | `POSTGRES_PASSWORD` | Compose PostgreSQL 密码 | 必填 |
@@ -75,7 +75,8 @@ docker compose up -d --no-build
 ### 登录后会话失效或渠道密钥无法保存
 
 确认 `.env` 中的 `SESSION_SECRET`、`CRYPTO_SECRET`、`DATA_ENCRYPTION_KEYS` 和
-`DATA_ENCRYPTION_ACTIVE_KEY_ID` 均存在且在重启前后保持不变。
+`DATA_ENCRYPTION_ACTIVE_KEY_ID` 均存在且在重启前后保持不变；`CRYPTO_SECRET` 与
+`DATA_ENCRYPTION_KEYS` 必须使用不同的随机值。
 
 ### 如何更新
 
