@@ -5,6 +5,7 @@
 upload
 *.exe
 *.db
+*.db-*
 build
 *.db-journal
 *.db-wal
