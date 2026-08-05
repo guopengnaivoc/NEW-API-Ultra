@@ -53,7 +53,6 @@ jobs:
             echo "::error::The tagged commit is not reachable from origin/$DEFAULT_BRANCH"
             exit 1
           fi
-          printf '%s\n' "$tag" > VERSION
           printf 'tag=%s\n' "$tag" >> "$GITHUB_OUTPUT"
           echo "Publishing $tag"
 
@@ -68,16 +67,26 @@ jobs:
             -H 'Accept: application/vnd.github+json' \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H 'X-GitHub-Api-Version: 2022-11-28' \
-            "$API_URL/repos/$REPOSITORY/rulesets?targets=tag&includes_parents=false")"
-          if ! jq -e '
-            any(.[]?;
+            "$API_URL/repos/$REPOSITORY/rulesets?includes_parents=false")"
+          protected=0
+          for ruleset_id in $(jq -r '.[] | select(.target == "tag" and .enforcement == "active") | .id' <<<"$rulesets"); do
+            detail="$(curl --fail --silent --show-error --connect-timeout 10 --max-time 30 --retry 3 --retry-delay 2 \
+              -H 'Accept: application/vnd.github+json' \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "$API_URL/repos/$REPOSITORY/rulesets/$ruleset_id")"
+            if jq -e '
               .target == "tag" and
               .enforcement == "active" and
               (((.conditions.ref_name.include // []) | index("refs/tags/v*")) != null) and
               (((.rules // []) | map(.type)) | index("deletion") != null) and
               (((.rules // []) | map(.type)) | index("non_fast_forward") != null)
-            )
-          ' <<<"$rulesets" >/dev/null; then
+            ' <<<"$detail" >/dev/null; then
+              protected=1
+              break
+            fi
+          done
+          if (( protected != 1 )); then
             echo '::error::An active repository tag ruleset for refs/tags/v* with deletion and non-fast-forward protection is required before publishing GHCR images.'
             exit 1
           fi
