@@ -4,7 +4,7 @@ This record describes the checks run against the `NEW API Ultra` publication
 staging tree. It is evidence for this snapshot, not a claim that the
 application has no remaining defects.
 
-Last updated: `2026-08-05T21:23:21Z` (verification commands were run in the
+Last updated: `2026-08-06T03:27:12Z` (verification commands were run in the
 same staging tree; generated build output was removed before publication).
 
 ## Pinned scope
@@ -16,10 +16,11 @@ same staging tree; generated build output was removed before publication).
   public `QuantumNous/new-api` commit)
 - Snapshot label: `v0.1.0-main.49270e59`
 - Intended repository: <https://github.com/guopengnaivoc/NEW-API-Ultra>
-- The remote CI evidence below is pinned to commit
-  `ee99409cb6c99773eec3ec5bbd036062bcb5dbde`; later publication-only commits do
-  not change application behavior, but each still requires its own CI run before
-  tagging.
+- The historical default-run CI evidence below is pinned to commit
+  `ee99409cb6c99773eec3ec5bbd036062bcb5dbde`. The P1 remediation candidate is
+  `eeda656a9ef85f33ffea35705540f9933a529269`; it changes only the frontend CI
+  runner invocation and still requires a fresh exact-main run after merge and
+  before tagging.
 - Generated `web/dist`, package-manager directories, `.env`, databases, and
   logs are intentionally absent from the source publication.
 - No Go, TypeScript/TSX, relay, controller, model, migration, or other
@@ -37,7 +38,7 @@ re-run after any source or dependency change):
   `DISABLE_ESLINT_PLUGIN=true`)
 - Frontend `bun run typecheck`
 - Frontend `bun run format:check`
-- Local frontend `bun test` — 418 passed, 0 failed across 75 files
+- Local frontend `bun test --isolate` — 418 passed, 0 failed across 75 files
 - Root `GOWORK=off go build ./...`
 - Root `GOWORK=off go test ./...`
 - Independent `relaykit` `go vet`, `go build`, and `go test`
@@ -61,10 +62,14 @@ re-run after any source or dependency change):
   publication additions, and 153 intentionally excluded local/upstream-only
   files; no runtime Go, TypeScript/TSX, relay, controller, model, migration, or
   other business-source drift detected
+- Candidate PR CI [31068276213](https://github.com/guopengnaivoc/NEW-API-Ultra/actions/runs/31068276213)
+  attempt 2 passed all three required jobs on the Linux runner after the
+  `bun test --isolate` change: frontend typecheck/build/test, backend
+  vet/build/test, and Docker build smoke test.
 
 ## Known non-passing or unverified boundaries
 
-- A completed GitHub Actions CI evidence run
+- A historical GitHub Actions CI evidence run
   [31040796003](https://github.com/guopengnaivoc/NEW-API-Ultra/actions/runs/31040796003)
   for evidence commit `ee99409cb6c99773eec3ec5bbd036062bcb5dbde` completed
   with `failure`: the
@@ -73,10 +78,10 @@ re-run after any source or dependency change):
   failing test is `web/src/features/dashboard/components/models/__tests__/chart-theme-recovery.test.tsx:131`,
   where `applicationAttempts` was `0` instead of `1` in “a dashboard chart
   recovers in place after a transient theme failure”. Local execution passed
-  418/0, so this publication does not treat CI as green; no business source or
-  test was changed, excluded, or serialized to hide the failure. The release
-  workflow consequently remains fail-closed until a fresh tagged-commit CI run
-  passes all required jobs.
+  418/0. The candidate remediation changes only the runner isolation mode; no
+  business source or test was changed, excluded, or serialized to hide the
+  failure. The candidate's PR CI passed, but the release workflow still
+  requires a fresh exact tagged-commit CI run after the change is merged.
 
 - Root `GOWORK=off go vet ./...` reports the pre-existing unreachable return at
   `relay/channel/dify/adaptor.go:111` in the pinned baseline. It was not
