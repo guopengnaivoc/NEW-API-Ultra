@@ -177,7 +177,12 @@ jobs:
         run: VITE_REACT_APP_VERSION="$(cat ../VERSION)" DISABLE_ESLINT_PLUGIN='true' bun run build
 
       - name: Test
-        run: bun test
+        # Several React tests install temporary DOM/VChart globals. Bun's
+        # default runner can share those globals between test files, which
+        # makes the result depend on worker scheduling. Keep each test file's
+        # globals and module cache isolated so CI exercises the same contract
+        # deterministically without changing production behavior.
+        run: bun test --isolate
 
   docker:
     name: Docker build smoke test
