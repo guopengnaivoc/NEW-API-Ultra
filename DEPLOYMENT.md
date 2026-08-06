@@ -122,7 +122,7 @@ workflow. After the first tagged push, the repository owner must explicitly
 choose whether `new-api-ultra` is public; anonymous users cannot pull a private
 package. Verify an unauthenticated pull only after that setting is intentional.
 
-The image workflow runs only for `vX.Y.Z`-style tags that exactly match the
+The image workflow normally runs for `vX.Y.Z`-style tags that exactly match the
 committed `VERSION` file, and rejects a tag whose commit is not reachable from
 the repository's default branch. Update `VERSION` in a source commit before
 creating a new release tag; the workflow will not silently rewrite a mismatched
@@ -130,11 +130,19 @@ source version. It also requires an active repository ruleset matching
 `refs/tags/v*` with deletion and non-fast-forward protection and no bypass actors;
 configure and verify that ruleset before creating a release tag so a published
 tag cannot silently move to another digest. Administrator bypasses are outside
-this workflow's trust boundary and must remain disabled for release tags. Before the
-image build, the workflow resolves the exact `push` run of this repository's
-`.github/workflows/ci.yml` on the default branch for the tagged commit, then
-requires the three named CI jobs from that run; unrelated pull-request checks or
-another workflow cannot satisfy the release gate. It also fails closed unless the repository variable
+this workflow's trust boundary and must remain disabled for release tags. The
+ruleset gate uses the GitHub GraphQL API because the read-only Actions token
+cannot receive the REST endpoint's redacted `bypass_actors` and
+`current_user_can_bypass` fields; any API/schema failure still blocks
+publication. Before the image build, the workflow resolves the exact `push` run
+of this repository's `.github/workflows/ci.yml` on the default branch for the
+selected commit, then requires the three named CI jobs from that run; unrelated
+pull-request checks or another workflow cannot satisfy the release gate. The
+workflow also supports a reviewed `workflow_dispatch` retry for an existing
+immutable tag. The dispatch requires the tag and full commit SHA, verifies that
+the remote tag resolves to that SHA and that the SHA is an ancestor of the
+default branch, then runs the same ruleset, authorization, CI, and build gates;
+it does not move or recreate a tag. It also fails closed unless the repository variable
 `ALLOW_GO_EPAY_REDISTRIBUTION=true`
 may be set only after written confirmation from the `go-epay` rights holder has
 been received and retained privately by the repository owner. For this
