@@ -256,6 +256,11 @@ jobs:
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
+          # The manual retry workflow checks out the selected release commit
+          # after the workflow itself starts on main. Read Git metadata from
+          # that detached checkout so OCI annotations cannot point at the
+          # dispatcher workflow commit instead of the image source.
+          context: git
           images: ${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=${{ steps.version.outputs.tag }}
@@ -263,6 +268,8 @@ jobs:
           labels: |
             org.opencontainers.image.revision=${{ steps.version.outputs.commit }}
             org.opencontainers.image.version=${{ steps.version.outputs.tag }}
+          annotations: |
+            manifest:org.opencontainers.image.revision=${{ steps.version.outputs.commit }}
 
       - name: Build and push image
         id: build
@@ -273,6 +280,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           provenance: mode=max

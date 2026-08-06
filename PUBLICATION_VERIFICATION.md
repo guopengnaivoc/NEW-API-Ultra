@@ -4,7 +4,7 @@ This record describes the checks run against the `NEW API Ultra` publication
 staging tree. It is evidence for this snapshot, not a claim that the
 application has no remaining defects.
 
-Last updated: `2026-08-06T10:11:26Z` (verification commands were run in the
+Last updated: `2026-08-06T11:18:39Z` (verification commands were run in the
 same staging tree; generated build output was removed before publication).
 
 ## Pinned scope
@@ -16,12 +16,15 @@ same staging tree; generated build output was removed before publication).
   public `QuantumNous/new-api` commit)
 - Snapshot label: `v0.1.0-main.49270e59`
 - Intended repository: <https://github.com/guopengnaivoc/NEW-API-Ultra>
-- The historical default-run CI evidence below is pinned to commit
-  `ee99409cb6c99773eec3ec5bbd036062bcb5dbde`. The P1 remediation is merged in
-  the publication main history as `0654c55965cf70a861089c041c7141b01be5765a`;
-  it changes only the frontend CI runner invocation. A fresh exact-main run is
-  required after any subsequent source or configuration change and before
-  tagging.
+- Publication/tag commit: `297e84d127a372cd91d57532bf3038a2b2805d00`; the
+  immutable tag `v0.1.0-main.49270e59` points to this commit. The application
+  baseline remains the local source snapshot above; publication-only commits do
+  not silently change business behavior.
+- The P1 frontend-CI remediation is merged as
+  `0654c55965cf70a861089c041c7141b01be5765a`; the CI-only release-gate fix is
+  merged as `9b6eb7ff05504e4f63d2c77dcc4ffcefa83379d7`. Exact main CI run
+  `31092692804` passed for the tagged publication commit, and main CI run
+  `31094915337` passed after the release-gate fix.
 - Generated `web/dist`, package-manager directories, `.env`, databases, and
   logs are intentionally absent from the source publication.
 - No Go, TypeScript/TSX, relay, controller, model, migration, or other
@@ -68,21 +71,26 @@ re-run after any source or dependency change):
   `bun test --isolate` change: frontend typecheck/build/test, backend
   vet/build/test, and Docker build smoke test.
 
+## Release and image evidence
+
+- Exact push/main CI for the immutable tagged commit: [31092692804](https://github.com/guopengnaivoc/NEW-API-Ultra/actions/runs/31092692804) — backend, frontend, and Docker smoke jobs passed.
+- The original tag-triggered publication attempt [31093075624](https://github.com/guopengnaivoc/NEW-API-Ultra/actions/runs/31093075624) stopped before login or image build because the read-only Actions token could not read the REST ruleset fields that are redacted without ruleset write access. It did not move or recreate the tag.
+- The fixed workflow was dispatched from `main` with the existing tag and exact commit: [31095075366](https://github.com/guopengnaivoc/NEW-API-Ultra/actions/runs/31095075366). All gates and the multi-architecture build passed.
+- Published references: `ghcr.io/guopengnaivoc/new-api-ultra:v0.1.0-main.49270e59` and `ghcr.io/guopengnaivoc/new-api-ultra:sha-297e84d`. Manifest digest: `sha256:9ccc1d3aea6b687a713e4cb167b4178a6236854f8734c7e91a6bafd8d3653aa8`.
+- The package is currently not anonymously pullable: an unauthenticated registry manifest request returned `401 Unauthorized`. GHCR package visibility is an owner-level setting; make `new-api-ultra` public explicitly before promising anonymous Docker pulls.
+- The first successful dispatch used `main` workflow commit `9b6eb7ff05504e4f63d2c77dcc4ffcefa83379d7` while building the selected source/tag commit `297e84d127a372cd91d57532bf3038a2b2805d00`. The image config label and summary identify `297e84d`, but the generated manifest annotation recorded the dispatcher SHA `9b6eb7f`. This metadata mismatch is retained as a release caveat; the follow-up workflow configuration uses the detached Git checkout and explicitly passes selected-commit annotations for future publications.
+
 ## Known non-passing or unverified boundaries
 
-- A historical GitHub Actions CI evidence run
+- Historical CI run
   [31040796003](https://github.com/guopengnaivoc/NEW-API-Ultra/actions/runs/31040796003)
-  for evidence commit `ee99409cb6c99773eec3ec5bbd036062bcb5dbde` completed
-  with `failure`: the
-  backend job and Docker build smoke test passed, but the frontend test job
-  reproduced one existing failure (`417 pass`, `1 fail` across 418 tests). The
-  failing test is `web/src/features/dashboard/components/models/__tests__/chart-theme-recovery.test.tsx:131`,
-  where `applicationAttempts` was `0` instead of `1` in “a dashboard chart
-  recovers in place after a transient theme failure”. Local execution passed
-  418/0. The candidate remediation changes only the runner isolation mode; no
-  business source or test was changed, excluded, or serialized to hide the
-  failure. The candidate's PR CI passed, but the release workflow still
-  requires a fresh exact tagged-commit CI run after the change is merged.
+  for evidence commit `ee99409cb6c99773eec3ec5bbd036062bcb5dbde` remains a
+  recorded failure: the backend and Docker smoke jobs passed, while the
+  frontend test job reproduced one existing failure (`417 pass`, `1 fail`).
+  That run is not used as release evidence. The P1 change altered only the
+  frontend test runner isolation; no business source or test was changed to
+  hide the failure. The fresh exact-main run for the immutable tagged commit
+  passed all three required jobs.
 
 - Root `GOWORK=off go vet ./...` reports the pre-existing unreachable return at
   `relay/channel/dify/adaptor.go:111` in the pinned baseline. It was not
