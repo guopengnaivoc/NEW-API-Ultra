@@ -289,7 +289,7 @@ Use [`DEPLOYMENT.md`](./DEPLOYMENT.md) for prebuilt-image or single-container in
 ## 🚢 Deployment
 
 > [!TIP]
-> **Tagged Docker image (published by this repository after a release):** `ghcr.io/guopengnaivoc/new-api-ultra:v0.1.0-main.49270e59`
+> **Tagged Docker image (published by this repository after a release):** `ghcr.io/guopengnaivoc/new-api-ultra:v0.1.0-main.49270e59-r1`
 
 ### 📋 Deployment Requirements
 

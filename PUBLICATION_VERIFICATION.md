@@ -4,8 +4,9 @@ This record describes the checks run against the `NEW API Ultra` publication
 staging tree. It is evidence for this snapshot, not a claim that the
 application has no remaining defects.
 
-Last updated: `2026-08-06T11:31:30Z` (verification commands were run in the
-same staging tree; generated build output was removed before publication).
+Last updated: `2026-08-06T14:23:36Z` (the corrected release, workflow logs, and GHCR
+registry manifests were re-verified; generated build output remains excluded from
+the source publication).
 
 ## Pinned scope
 
@@ -14,18 +15,24 @@ same staging tree; generated build output was removed before publication).
   `05d5c10e4ab2418a0f421190c0d3a81fb8e91dc2`,
   `33fd5a0ff326673908ef08a9452bba856d3b32a1`; not currently resolvable as a
   public `QuantumNous/new-api` commit)
-- Snapshot label: `v0.1.0-main.49270e59`
+- Recommended snapshot label: `v0.1.0-main.49270e59-r1`
 - Intended repository: <https://github.com/guopengnaivoc/NEW-API-Ultra>
-- Publication/tag commit: `297e84d127a372cd91d57532bf3038a2b2805d00`; the
-  immutable tag `v0.1.0-main.49270e59` points to this commit. The application
-  baseline remains the local source snapshot above; publication-only commits do
-  not silently change business behavior.
+- Corrected publication/tag commit:
+  `add3b51627ba4d6dd608a9d9f3512318778221de`; immutable tag
+  `v0.1.0-main.49270e59-r1` points to this commit. The application baseline
+  remains the local source snapshot above; publication-only commits do not
+  silently change business behavior.
+- Historical first publication/tag commit:
+  `297e84d127a372cd91d57532bf3038a2b2805d00`; immutable tag
+  `v0.1.0-main.49270e59` remains at that commit and was not rewritten.
 - The P1 frontend-CI remediation is merged as
   `0654c55965cf70a861089c041c7141b01be5765a`; the CI-only release-gate fix is
-  merged as `9b6eb7ff05504e4f63d2c77dcc4ffcefa83379d7`. Exact main CI run
-  `31092692804` passed for the tagged publication commit, and main CI run
-  `31094915337` passed after the release-gate fix; post-merge main CI
-  `31097555619` also passed after the publication-evidence/OCI metadata PR.
+  merged as `9b6eb7ff05504e4f63d2c77dcc4ffcefa83379d7`; the P2 OCI-level/prefix fix is
+  merged through PR #6 as `a1b0e4e718312ed5624aac8dee83203b70fd81ae`;
+  and the format-only VERSION newline follow-up is merged through PR #7 as the
+  final tagged commit `add3b51627ba4d6dd608a9d9f3512318778221de`.
+- Exact push/main CI run `31106875917` passed all three required jobs for the
+  corrected tagged commit.
 - Generated `web/dist`, package-manager directories, `.env`, databases, and
   logs are intentionally absent from the source publication.
 - No Go, TypeScript/TSX, relay, controller, model, migration, or other
@@ -61,26 +68,68 @@ re-run after any source or dependency change):
   `relaykit/relayconvert/kitutil/mask.go`; the remaining PEM markers are parser
   delimiters. GitHub secret-scanning alert #1 was reviewed and resolved as a
   false positive with an audit comment.
-- Baseline parity audit against `49270e59f475761b457879693e0c3ebd71329fac`:
-  2,329 baseline files, 2,183 publication files, 26 publication-only
+- Baseline parity audit at the first tagged publication commit against
+  `49270e59f475761b457879693e0c3ebd71329fac`: 2,329 baseline files, 2,183
+  publication files, 26 publication-only
   modifications (including the one comment-only source-note change above), 7
   publication additions, and 153 intentionally excluded local/upstream-only
   files; no runtime Go, TypeScript/TSX, relay, controller, model, migration, or
-  other business-source drift detected
+  other business-source drift detected. Later commits through the corrected tag
+  change only CI/release configuration, VERSION metadata, and publication docs.
 - Candidate PR CI [31068276213](https://github.com/guopengnaivoc/NEW-API-Ultra/actions/runs/31068276213)
   attempt 2 passed all three required jobs on the Linux runner after the
   `bun test --isolate` change: frontend typecheck/build/test, backend
   vet/build/test, and Docker build smoke test.
+- OCI annotation PR [#6](https://github.com/guopengnaivoc/NEW-API-Ultra/pull/6)
+  CI [31105788420](https://github.com/guopengnaivoc/NEW-API-Ultra/actions/runs/31105788420)
+  and VERSION-newline PR [#7](https://github.com/guopengnaivoc/NEW-API-Ultra/pull/7)
+  CI [31106610550](https://github.com/guopengnaivoc/NEW-API-Ultra/actions/runs/31106610550)
+  each passed the same three required jobs. Final exact push/main CI
+  [31106875917](https://github.com/guopengnaivoc/NEW-API-Ultra/actions/runs/31106875917)
+  also passed all three jobs for the corrected tagged commit.
 
 ## Release and image evidence
 
-- Exact push/main CI for the immutable tagged commit: [31092692804](https://github.com/guopengnaivoc/NEW-API-Ultra/actions/runs/31092692804) — backend, frontend, and Docker smoke jobs passed.
-- The original tag-triggered publication attempt [31093075624](https://github.com/guopengnaivoc/NEW-API-Ultra/actions/runs/31093075624) stopped before login or image build because the read-only Actions token could not read the REST ruleset fields that are redacted without ruleset write access. It did not move or recreate the tag.
-- The fixed workflow was dispatched from `main` with the existing tag and exact commit: [31095075366](https://github.com/guopengnaivoc/NEW-API-Ultra/actions/runs/31095075366). All gates and the multi-architecture build passed.
-- The follow-up publication-evidence/OCI metadata PR [#4](https://github.com/guopengnaivoc/NEW-API-Ultra/pull/4) passed all three required PR jobs, and the resulting exact main CI [31097555619](https://github.com/guopengnaivoc/NEW-API-Ultra/actions/runs/31097555619) passed all three required jobs.
-- Published references: `ghcr.io/guopengnaivoc/new-api-ultra:v0.1.0-main.49270e59` and `ghcr.io/guopengnaivoc/new-api-ultra:sha-297e84d`. Manifest digest: `sha256:9ccc1d3aea6b687a713e4cb167b4178a6236854f8734c7e91a6bafd8d3653aa8`.
-- GHCR anonymous pull was verified through the registry token exchange: the manifest request returned `200 OK`, OCI index media type, four manifests, and the expected digest. A direct unauthenticated manifest request returns `401` with a `WWW-Authenticate` challenge, which is normal for GHCR and is not evidence that the package is private.
-- The first successful dispatch ran the workflow from `main` commit `9b6eb7ff05504e4f63d2c77dcc4ffcefa83379d7` while building selected source/tag commit `297e84d127a372cd91d57532bf3038a2b2805d00`. The metadata-action log generated a default manifest annotation for the dispatcher SHA, but the then-current build step did not pass that output to Buildx; registry inspection confirms the published index and platform manifests have no revision annotation. The image config labels and SLSA provenance identify the selected `297e84d` source. The follow-up workflow configuration reads the detached Git checkout and explicitly passes selected-commit annotations for future publications.
+- Recommended corrected release:
+  [v0.1.0-main.49270e59-r1](https://github.com/guopengnaivoc/NEW-API-Ultra/releases/tag/v0.1.0-main.49270e59-r1),
+  immutable commit `add3b51627ba4d6dd608a9d9f3512318778221de`.
+- Exact push/main CI for that commit:
+  [31106875917](https://github.com/guopengnaivoc/NEW-API-Ultra/actions/runs/31106875917)
+  — backend, frontend, and Docker smoke jobs passed.
+- Tag-triggered publication:
+  [31107211995](https://github.com/guopengnaivoc/NEW-API-Ultra/actions/runs/31107211995)
+  — tag/ruleset, redistribution authorization, exact-CI, generated-annotation,
+  and multi-architecture build/push gates all passed.
+- Published references:
+  `ghcr.io/guopengnaivoc/new-api-ultra:v0.1.0-main.49270e59-r1` and
+  `ghcr.io/guopengnaivoc/new-api-ultra:sha-add3b51`. Both resolve to OCI index
+  digest `sha256:a31091ca37f2f94164b3a098526bd8ef04d60dce38dc9dd11263677ebdf50149`.
+- Anonymous GHCR token exchange and manifest retrieval returned the OCI index,
+  two Linux image manifests, and two SBOM/provenance attestation manifests. The
+  index-level `org.opencontainers.image.revision` equals full commit
+  `add3b51627ba4d6dd608a9d9f3512318778221de`. Fetching the platform manifest
+  bodies by digest verified the same standard key/value on `linux/amd64`
+  (`sha256:a3045df2ec04f483335d3d9eddf2f8528f984ef71ab92493855c060dfdb9cb2b`)
+  and `linux/arm64`
+  (`sha256:bbb4f073380d9a76874a968261f50f12ad695beb543ad71c3f2e0021d0635ee1`).
+  Both platform config labels contain the same revision. No malformed
+  `manifest:org.opencontainers.image.revision` key was present in those
+  manifest-body annotation maps.
+- Historical first release `v0.1.0-main.49270e59` remains unchanged at commit
+  `297e84d127a372cd91d57532bf3038a2b2805d00` and digest
+  `sha256:9ccc1d3aea6b687a713e4cb167b4178a6236854f8734c7e91a6bafd8d3653aa8`.
+  Its image config labels and SLSA provenance identify commit `297e84d`, but
+  registry inspection confirms that its OCI index and both platform manifest
+  bodies have no revision annotation. The tag and image were not moved,
+  deleted, or overwritten; use the `-r1` release for corrected metadata.
+- Historical workflow evidence is retained: tag run
+  [31093075624](https://github.com/guopengnaivoc/NEW-API-Ultra/actions/runs/31093075624)
+  stopped before login/build because REST ruleset fields were redacted to the
+  read-only Actions token, and recovery dispatch
+  [31095075366](https://github.com/guopengnaivoc/NEW-API-Ultra/actions/runs/31095075366)
+  published the first immutable artifact without moving its tag. PR #3 moved the
+  ruleset check to fail-closed GraphQL, while PR #6 fixed metadata-action level
+  handling and guards against double-prefixed output.
 
 ## Known non-passing or unverified boundaries
 
@@ -92,7 +141,8 @@ re-run after any source or dependency change):
   That run is not used as release evidence. The P1 change altered only the
   frontend test runner isolation; no business source or test was changed to
   hide the failure. The fresh exact-main run for the immutable tagged commit and the post-merge
-  main run for the publication workflow both passed all three required jobs.
+  main runs for the original and corrected publication commits passed all
+  three required jobs.
 
 - Root `GOWORK=off go vet ./...` reports the pre-existing unreachable return at
   `relay/channel/dify/adaptor.go:111` in the pinned baseline. It was not

@@ -84,12 +84,12 @@ external database is configured correctly.
 
 ### Using a tagged prebuilt image
 
-The GitHub Actions workflow publishes tagged images to GHCR. Only use a tag
-that is visible on the repository's Releases/Packages page and verify its
-digest:
+The GitHub Actions workflow publishes tagged images to GHCR. The current
+annotation-corrected immutable release is
+`v0.1.0-main.49270e59-r1`; verify the release record and digest before use:
 
 ```bash
-export NEW_API_IMAGE=ghcr.io/guopengnaivoc/new-api-ultra:<tag>
+export NEW_API_IMAGE=ghcr.io/guopengnaivoc/new-api-ultra:v0.1.0-main.49270e59-r1
 if [ ! -e .env ]; then ./scripts/bootstrap-env.sh; fi
 docker pull "$NEW_API_IMAGE"
 docker buildx imagetools inspect "$NEW_API_IMAGE"  # or: docker manifest inspect -v "$NEW_API_IMAGE"
@@ -105,7 +105,7 @@ For an immutable deployment, replace the tag with the multi-architecture digest
 reported by `imagetools` (or `manifest inspect`) before starting Compose:
 
 ```bash
-export NEW_API_IMAGE=ghcr.io/guopengnaivoc/new-api-ultra@sha256:<manifest-digest>
+export NEW_API_IMAGE=ghcr.io/guopengnaivoc/new-api-ultra@sha256:a31091ca37f2f94164b3a098526bd8ef04d60dce38dc9dd11263677ebdf50149
 docker compose up -d --no-build
 ```
 
@@ -118,9 +118,9 @@ shown in the `Publish Docker image` Actions summary before distributing the
 image. The tag alone is not sufficient provenance.
 
 GHCR package visibility is an owner-level setting and is not changed by this
-workflow. After the first tagged push, the repository owner must explicitly
-choose whether `new-api-ultra` is public; anonymous users cannot pull a private
-package. Verify an unauthenticated pull only after that setting is intentional.
+workflow. Anonymous registry-token exchange and manifest retrieval were verified
+for `v0.1.0-main.49270e59-r1`; re-check package visibility before relying on public
+pulls because an owner can change that setting independently of the source tag.
 
 The image workflow normally runs for `vX.Y.Z`-style tags that exactly match the
 committed `VERSION` file, and rejects a tag whose commit is not reachable from

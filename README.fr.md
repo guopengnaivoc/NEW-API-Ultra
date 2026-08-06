@@ -288,7 +288,7 @@ Consultez [`DEPLOYMENT.md`](./DEPLOYMENT.md) pour une image préconstruite ou un
 ## 🚢 Déploiement
 
 > [!TIP]
-> **Image Docker versionnée (publiée après une release) :** `ghcr.io/guopengnaivoc/new-api-ultra:v0.1.0-main.49270e59`
+> **Image Docker versionnée (publiée après une release) :** `ghcr.io/guopengnaivoc/new-api-ultra:v0.1.0-main.49270e59-r1`
 
 ### 📋 Exigences de déploiement
 
