@@ -10,6 +10,10 @@ This public snapshot is a derivative distribution of [QuantumNous/new-api](https
 - Source tree object: `4e4afc4d30f803016658a544e0407524f3ba2fdf`
 - Snapshot label: `v0.1.0-main.49270e59`
 - Publication repository: `https://github.com/guopengnaivoc/NEW-API-Ultra`
+- Immutable release/tag commit: `297e84d127a372cd91d57532bf3038a2b2805d00`
+- Exact tagged-commit CI run: `31092692804` (all required jobs passed)
+- GHCR image: `ghcr.io/guopengnaivoc/new-api-ultra:v0.1.0-main.49270e59`
+- Multi-architecture manifest digest: `sha256:9ccc1d3aea6b687a713e4cb167b4178a6236854f8734c7e91a6bafd8d3653aa8`
 
 The source commit above is a local merge snapshot, not an upstream public commit
 identifier: as of 2026-08-05 the GitHub API did not resolve that SHA in
@@ -36,10 +40,16 @@ The publication CI keeps the pinned baseline `go vet` diagnostic at
 fail-closed allowlist; any additional or different diagnostic fails CI. This
 packaging decision does not make the application baseline vet-clean.
 
-The initial image label `v0.1.0-main.49270e59` identifies this snapshot. The
-Docker workflow writes the source SHA and the multi-architecture manifest
-digest to the GitHub Actions job summary. A later release tag is authoritative
-only when the tag, source commit, CI result, and GHCR digest are recorded
-together. This provenance record does not claim that every outstanding issue
-in the upstream or local issue backlog is resolved. Verify the tagged source
-and deployment checks before using it for a public service.
+The immutable image publication was recovered through workflow dispatch run
+`31095075366` after the original tag run `31093075624` failed before the build
+because the read-only Actions token could not inspect redacted REST ruleset
+fields. The dispatch used the existing tag and selected commit; it did not move
+or recreate the tag. The image config label and summary identify the selected
+commit `297e84d`, while that first dispatch's manifest annotation retained the
+workflow-head SHA `9b6eb7f`; the mismatch is recorded in
+`PUBLICATION_VERIFICATION.md`, and the follow-up workflow now forces selected-
+commit Git metadata and annotations. A release is authoritative only when the
+tag, source commit, CI result, and GHCR digest are recorded together. This
+provenance record does not claim that every outstanding issue in the upstream or
+local issue backlog is resolved. Verify the tagged source and deployment checks
+before using it for a public service.
