@@ -268,8 +268,34 @@ jobs:
           labels: |
             org.opencontainers.image.revision=${{ steps.version.outputs.commit }}
             org.opencontainers.image.version=${{ steps.version.outputs.tag }}
+          # metadata-action adds the manifest/index level prefix; keep the
+          # custom input as a plain OCI key so both levels receive the same
+          # selected source commit.
           annotations: |
-            manifest:org.opencontainers.image.revision=${{ steps.version.outputs.commit }}
+            org.opencontainers.image.revision=${{ steps.version.outputs.commit }}
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
+
+      - name: Verify generated OCI annotations
+        env:
+          EXPECTED_REVISION: ${{ steps.version.outputs.commit }}
+          METADATA_ANNOTATIONS: ${{ steps.meta.outputs.annotations }}
+        run: |
+          set -euo pipefail
+          expected="org.opencontainers.image.revision=${EXPECTED_REVISION}"
+          if grep -Fq 'manifest:manifest:' <<<"${METADATA_ANNOTATIONS}" || \
+             grep -Fq 'index:index:' <<<"${METADATA_ANNOTATIONS}"; then
+            echo "::error::metadata-action produced a double-prefixed OCI annotation"
+            printf '%s\n' "${METADATA_ANNOTATIONS}"
+            exit 1
+          fi
+          for level in index manifest; do
+            if ! grep -Fxq "${level}:${expected}" <<<"${METADATA_ANNOTATIONS}"; then
+              echo "::error::metadata-action did not generate ${level}:${expected}"
+              printf '%s\n' "${METADATA_ANNOTATIONS}"
+              exit 1
+            fi
+          done
 
       - name: Build and push image
         id: build
