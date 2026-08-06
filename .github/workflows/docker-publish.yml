@@ -283,6 +283,12 @@ jobs:
         run: |
           set -euo pipefail
           expected="org.opencontainers.image.revision=${EXPECTED_REVISION}"
+          if grep -Fq 'manifest:manifest:' <<<"${METADATA_ANNOTATIONS}" || \
+             grep -Fq 'index:index:' <<<"${METADATA_ANNOTATIONS}"; then
+            echo "::error::metadata-action produced a double-prefixed OCI annotation"
+            printf '%s\n' "${METADATA_ANNOTATIONS}"
+            exit 1
+          fi
           for level in index manifest; do
             if ! grep -Fxq "${level}:${expected}" <<<"${METADATA_ANNOTATIONS}"; then
               echo "::error::metadata-action did not generate ${level}:${expected}"
