@@ -290,7 +290,7 @@ docker compose up -d --build
 ## 🚢 デプロイ
 
 > [!TIP]
-> **タグ付き Docker イメージ（リリース後に公開）:** `ghcr.io/guopengnaivoc/new-api-ultra:v0.1.0-main.49270e59`
+> **タグ付き Docker イメージ（リリース後に公開）:** `ghcr.io/guopengnaivoc/new-api-ultra:v0.1.0-main.49270e59-r1`
 
 ### 📋 デプロイ要件
 

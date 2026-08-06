@@ -289,7 +289,7 @@ docker compose up -d --build
 ## 🚢 部署
 
 > [!TIP]
-> **带版本 Docker 镜像（发布流程完成后提供）：** `ghcr.io/guopengnaivoc/new-api-ultra:v0.1.0-main.49270e59`
+> **带版本 Docker 镜像（发布流程完成后提供）：** `ghcr.io/guopengnaivoc/new-api-ultra:v0.1.0-main.49270e59-r1`
 
 ### 📋 部署要求
 
