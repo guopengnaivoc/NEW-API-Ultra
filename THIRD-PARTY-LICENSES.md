@@ -6,8 +6,10 @@ current `go.mod`, `web/bun.lock`, and `electron/package-lock.json` in this
 snapshot; they are not a substitute for a complete transitive SBOM.
 
 License labels are engineering triage, not legal clearance. Entries marked
-`VERIFY` and the unresolved `go-epay` license evidence require review before
-redistributing binaries or operating a hosted service. Preserve each
+`VERIFY` require review before redistributing binaries or operating a hosted
+service. The `go-epay` entry below records an operator-attested written
+authorization for the resolved version; the original evidence is retained
+privately and this summary is not independent legal advice. Preserve each
 dependency's upstream notices in addition to this summary.
 
 Docker Compose service images are operational dependencies rather than direct
@@ -19,7 +21,7 @@ table below; see `DEPLOYMENT.md` and review each exact image before use.
 | Area | Scope | Ecosystem | Dependency | Resolved version | License / status |
 |---|---|---|---|---|---|
 | backend | production | Go | `github.com/Azure/go-ntlmssp` | `v0.1.1` | MIT |
-| backend | production | Go | `github.com/Calcium-Ion/go-epay` | `v0.0.4` | License status unresolved: repository metadata says MIT, but the v0.0.4 tag has no license file |
+| backend | production | Go | `github.com/Calcium-Ion/go-epay` | `v0.0.4` | Operator-attested written redistribution authorization; exact tag has no license file, so preserve the authorization record and upstream notices |
 | backend | production | Go | `github.com/ClickHouse/clickhouse-go/v2` | `v2.32.0` | Apache-2.0 |
 | backend | production | Go | `github.com/abema/go-mp4` | `v1.4.1` | MIT |
 | backend | test | Go | `github.com/alicebob/miniredis/v2` | `v2.38.0` | MIT |
@@ -351,16 +353,18 @@ https://openfontlicense.org/open-font-license-official-text/
 When distributing font files, preserve the OFL license text, copyright notices,
 and reserved font name restrictions supplied by the upstream font project.
 
-### License status unresolved: `github.com/Calcium-Ion/go-epay v0.0.4`
+### Redistribution authorization recorded: `github.com/Calcium-Ion/go-epay v0.0.4`
 
 The [repository metadata](https://github.com/Calcium-Ion/go-epay) currently reports
 MIT, but the exact [v0.0.4 tag](https://github.com/Calcium-Ion/go-epay/tree/v0.0.4)
 (the tagged commit `d8c8810761402e9de0320c4b7eed3cfd7fa94461`) contains no
 `LICENSE`, `COPYING`, or `NOTICE` file; the current default branch does contain a
-`LICENSE` file. This publication therefore does not assert a license grant or
-redistribution permission for the resolved tag. Obtain and record written
-confirmation from the rights holder before distributing a compiled binary or
-operating a hosted service that includes this dependency.
+`LICENSE` file. The repository owner has confirmed receipt of written
+authorization from the `go-epay` rights holder for the intended redistribution
+of this resolved dependency. The original authorization is retained privately
+and is not reproduced in this public repository. This is an operator attestation,
+not an independent legal opinion; preserve the authorization record and all
+upstream notices, and do not distribute beyond the authorization's scope.
 
 ### Unlicense
 

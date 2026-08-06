@@ -136,8 +136,13 @@ image build, the workflow resolves the exact `push` run of this repository's
 requires the three named CI jobs from that run; unrelated pull-request checks or
 another workflow cannot satisfy the release gate. It also fails closed unless the repository variable
 `ALLOW_GO_EPAY_REDISTRIBUTION=true`
-has been set after written confirmation from the `go-epay` rights holder; leave it
-unset while that legal review is open. A tag is not a security review or a claim
+may be set only after written confirmation from the `go-epay` rights holder has
+been received and retained privately by the repository owner. For this
+publication, the repository owner has reported that confirmation; the public
+record does not reproduce confidential authorization text and is not an
+independent legal opinion. Keep the variable unset if the authorization does
+not cover the exact resolved version or the intended source, binary, Docker,
+GHCR, or hosted-service distribution. A tag is not a security review or a claim
 that unresolved application bugs have been fixed.
 
 ## 3. Secrets and encrypted channel credentials
@@ -272,10 +277,11 @@ recorded in [`PUBLICATION_VERIFICATION.md`](./PUBLICATION_VERIFICATION.md).
 
 `THIRD-PARTY-LICENSES.md` records that the GitHub metadata for
 `github.com/Calcium-Ion/go-epay v0.0.4` says MIT, while the exact v0.0.4 tag
-contains no license file. Obtain and record written confirmation from the rights
-holder before advertising a public binary or hosted service. This repository
-does not provide legal clearance and does not claim that every outstanding
-upstream or local issue is resolved.
+contains no license file. The repository owner has reported receipt of written
+confirmation from the rights holder for the intended redistribution; retain the
+original evidence privately, preserve upstream notices, and do not distribute
+beyond its scope. This repository does not provide independent legal clearance
+and does not claim that every outstanding upstream or local issue is resolved.
 
 Compose service images are separately distributed software and are not
 relicensed by this repository. In particular, the official Redis image states

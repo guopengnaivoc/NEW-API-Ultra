@@ -4,7 +4,7 @@ This record describes the checks run against the `NEW API Ultra` publication
 staging tree. It is evidence for this snapshot, not a claim that the
 application has no remaining defects.
 
-Last updated: `2026-08-06T03:27:12Z` (verification commands were run in the
+Last updated: `2026-08-06T10:11:26Z` (verification commands were run in the
 same staging tree; generated build output was removed before publication).
 
 ## Pinned scope
@@ -17,10 +17,11 @@ same staging tree; generated build output was removed before publication).
 - Snapshot label: `v0.1.0-main.49270e59`
 - Intended repository: <https://github.com/guopengnaivoc/NEW-API-Ultra>
 - The historical default-run CI evidence below is pinned to commit
-  `ee99409cb6c99773eec3ec5bbd036062bcb5dbde`. The P1 remediation candidate is
-  `eeda656a9ef85f33ffea35705540f9933a529269`; it changes only the frontend CI
-  runner invocation and still requires a fresh exact-main run after merge and
-  before tagging.
+  `ee99409cb6c99773eec3ec5bbd036062bcb5dbde`. The P1 remediation is merged in
+  the publication main history as `0654c55965cf70a861089c041c7141b01be5765a`;
+  it changes only the frontend CI runner invocation. A fresh exact-main run is
+  required after any subsequent source or configuration change and before
+  tagging.
 - Generated `web/dist`, package-manager directories, `.env`, databases, and
   logs are intentionally absent from the source publication.
 - No Go, TypeScript/TSX, relay, controller, model, migration, or other
@@ -114,17 +115,19 @@ re-run after any source or dependency change):
   provider/database/Redis matrix, or public HTTPS reverse-proxy test was run
   in this staging pass.
 
-## Redistribution boundary
+## Redistribution authorization
 
-`THIRD-PARTY-LICENSES.md` records an unresolved license boundary for
-`github.com/Calcium-Ion/go-epay v0.0.4`: GitHub repository metadata reports MIT,
-but the exact v0.0.4 tag has no `LICENSE`, `COPYING`, or `NOTICE` file. This
-publication does not convert that conflicting evidence into legal clearance.
-Obtain and record written confirmation from the rights holder before
-redistributing a binary or operating a hosted service. Preserve `LICENSE`,
-`NOTICE`, the upstream attribution, and all third-party notices.
+`THIRD-PARTY-LICENSES.md` records that GitHub repository metadata reports MIT,
+but the exact `github.com/Calcium-Ion/go-epay v0.0.4` tag has no `LICENSE`,
+`COPYING`, or `NOTICE` file. The repository owner has confirmed receipt of
+written authorization from the `go-epay` rights holder for the intended
+redistribution of this resolved dependency. The original authorization is
+retained privately and is not reproduced here; this is an operator attestation,
+not an independent legal opinion. Preserve `LICENSE`, `NOTICE`, the upstream
+attribution, and all third-party notices, and keep distribution within the
+authorization's scope.
 
-The GHCR workflow therefore fails closed until the repository owner sets
-`ALLOW_GO_EPAY_REDISTRIBUTION=true` after recording that confirmation. The gate
+The GHCR workflow may proceed only after the repository owner sets
+`ALLOW_GO_EPAY_REDISTRIBUTION=true` after retaining that confirmation. The gate
 does not itself grant rights to source, module, CI-log, or BuildKit-cache artifacts;
 those retention and access surfaces require the same rights-holder review.
