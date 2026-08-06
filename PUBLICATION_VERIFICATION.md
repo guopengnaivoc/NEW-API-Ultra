@@ -4,7 +4,7 @@ This record describes the checks run against the `NEW API Ultra` publication
 staging tree. It is evidence for this snapshot, not a claim that the
 application has no remaining defects.
 
-Last updated: `2026-08-06T11:18:39Z` (verification commands were run in the
+Last updated: `2026-08-06T11:31:30Z` (verification commands were run in the
 same staging tree; generated build output was removed before publication).
 
 ## Pinned scope
@@ -24,7 +24,8 @@ same staging tree; generated build output was removed before publication).
   `0654c55965cf70a861089c041c7141b01be5765a`; the CI-only release-gate fix is
   merged as `9b6eb7ff05504e4f63d2c77dcc4ffcefa83379d7`. Exact main CI run
   `31092692804` passed for the tagged publication commit, and main CI run
-  `31094915337` passed after the release-gate fix.
+  `31094915337` passed after the release-gate fix; post-merge main CI
+  `31097555619` also passed after the publication-evidence/OCI metadata PR.
 - Generated `web/dist`, package-manager directories, `.env`, databases, and
   logs are intentionally absent from the source publication.
 - No Go, TypeScript/TSX, relay, controller, model, migration, or other
@@ -76,6 +77,7 @@ re-run after any source or dependency change):
 - Exact push/main CI for the immutable tagged commit: [31092692804](https://github.com/guopengnaivoc/NEW-API-Ultra/actions/runs/31092692804) — backend, frontend, and Docker smoke jobs passed.
 - The original tag-triggered publication attempt [31093075624](https://github.com/guopengnaivoc/NEW-API-Ultra/actions/runs/31093075624) stopped before login or image build because the read-only Actions token could not read the REST ruleset fields that are redacted without ruleset write access. It did not move or recreate the tag.
 - The fixed workflow was dispatched from `main` with the existing tag and exact commit: [31095075366](https://github.com/guopengnaivoc/NEW-API-Ultra/actions/runs/31095075366). All gates and the multi-architecture build passed.
+- The follow-up publication-evidence/OCI metadata PR [#4](https://github.com/guopengnaivoc/NEW-API-Ultra/pull/4) passed all three required PR jobs, and the resulting exact main CI [31097555619](https://github.com/guopengnaivoc/NEW-API-Ultra/actions/runs/31097555619) passed all three required jobs.
 - Published references: `ghcr.io/guopengnaivoc/new-api-ultra:v0.1.0-main.49270e59` and `ghcr.io/guopengnaivoc/new-api-ultra:sha-297e84d`. Manifest digest: `sha256:9ccc1d3aea6b687a713e4cb167b4178a6236854f8734c7e91a6bafd8d3653aa8`.
 - GHCR anonymous pull was verified through the registry token exchange: the manifest request returned `200 OK`, OCI index media type, four manifests, and the expected digest. A direct unauthenticated manifest request returns `401` with a `WWW-Authenticate` challenge, which is normal for GHCR and is not evidence that the package is private.
 - The first successful dispatch ran the workflow from `main` commit `9b6eb7ff05504e4f63d2c77dcc4ffcefa83379d7` while building selected source/tag commit `297e84d127a372cd91d57532bf3038a2b2805d00`. The metadata-action log generated a default manifest annotation for the dispatcher SHA, but the then-current build step did not pass that output to Buildx; registry inspection confirms the published index and platform manifests have no revision annotation. The image config labels and SLSA provenance identify the selected `297e84d` source. The follow-up workflow configuration reads the detached Git checkout and explicitly passes selected-commit annotations for future publications.
@@ -89,8 +91,8 @@ re-run after any source or dependency change):
   frontend test job reproduced one existing failure (`417 pass`, `1 fail`).
   That run is not used as release evidence. The P1 change altered only the
   frontend test runner isolation; no business source or test was changed to
-  hide the failure. The fresh exact-main run for the immutable tagged commit
-  passed all three required jobs.
+  hide the failure. The fresh exact-main run for the immutable tagged commit and the post-merge
+  main run for the publication workflow both passed all three required jobs.
 
 - Root `GOWORK=off go vet ./...` reports the pre-existing unreachable return at
   `relay/channel/dify/adaptor.go:111` in the pinned baseline. It was not
